@@ -28,12 +28,15 @@ def get_pages_for_episode(episode):
     site = get_page(episode_url).prettify()
 
     site_html = site.splitlines()
-    manga_page_list_as_string = [
-        line for line in site_html if 'paginasLista = "{' in line][0]
-    manga_page_list_as_string = manga_page_list_as_string.replace(
-        "\tpaginasLista = \"", "").replace('\\', "").replace('";', "")
-    manga_page_list_as_json = json.loads(manga_page_list_as_string)
-
+    
+    try:
+        manga_page_list_as_string = [
+            line for line in site_html if 'paginasLista = "{' in line][0]
+        manga_page_list_as_string = manga_page_list_as_string.replace(
+            "\tpaginasLista = \"", "").replace('\\', "").replace('";', "")
+        manga_page_list_as_json = json.loads(manga_page_list_as_string)
+    except Exception:
+        manga_page_list_as_json = {}
     pages = []
 
     for key in manga_page_list_as_json.keys():
@@ -88,6 +91,9 @@ def main(argv):
 
     for episode in episode_list:
         pages = get_pages_for_episode(episode)
+        if(len(pages) == 0):
+            print('episode #{} not found!'.format(episode))
+            continue
         download_pages(episode, pages)
         compact_folder(episode)
         print("download episode completed: " + str(episode))
