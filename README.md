@@ -2,7 +2,7 @@
 
 One Piece Manga (PT_BR) Downloader and Converter to CBZ
 
-- create an python environment
+- create a python environment
 
 ```bash
 virtualenv environment

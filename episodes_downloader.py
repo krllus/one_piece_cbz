@@ -4,6 +4,7 @@
 import requests
 import json
 import os
+import re
 import sys
 import subprocess
 from bs4 import BeautifulSoup
@@ -17,6 +18,21 @@ def get_page(url):
     soup = BeautifulSoup(page.content, 'html.parser')
     return soup
 
+def get_chapters_list():
+    # download page from url
+    url_chapters = "https://onepieceteca.com/ler-online/manga-one-piece/ajax/chapters/"
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+    page = requests.post(url_chapters, headers=headers)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    return soup
+
+def get_pages_for_episode_url(episode_url):
+    print(episode_url)
+    
+    pages = []
+    return pages
 
 def get_pages_for_episode(episode):
     # download page from url
@@ -44,6 +60,44 @@ def get_pages_for_episode(episode):
 
     return pages
 
+def get_episode_url(chapters, episode):
+    found_url = None
+    for chapter in chapters:
+        
+        if chapter["id"].casefold() == str(episode).casefold():
+            found_url = chapter["href"]
+            break
+    return found_url
+
+def get_all_chapters(offline):
+    
+    if(offline):
+        with open("all_chapters.json", "r") as file:
+            json_string = file.read()
+            json_data = json.loads(json_string)
+            return json_data
+    
+    soup = get_chapters_list()    
+    try:
+        chapters = soup.find_all('li', class_='wp-manga-chapter')        
+        
+        chapters_list = []
+        
+        for chapter in chapters:
+            chapter_link = chapter.find('a')
+            href = chapter_link.get('href')
+            text = chapter_link.text.strip()
+            episode = re.sub(r'\D', '', text)  # \D matches any non-numeric character
+            chapters_list.append({"id": episode,"text": text, "href": href})
+        
+        with open("all_chapters.json", "w") as json_file:
+            json_string = json.dumps(chapters_list)
+            json_file.write(json_string)
+        
+    except Exception:
+        chapters_list = []
+    return chapters_list
+    
 
 def create_episode_path(episode):
     current_dir = os.getcwd()
@@ -89,8 +143,17 @@ def main(argv):
         except AttributeError as ex:
             print(ex)
 
+    
+    chapters = get_all_chapters(True)
+    
     for episode in episode_list:
-        pages = get_pages_for_episode(episode)
+        
+        episode_url = get_episode_url(chapters=chapters, episode=episode)
+        if(episode_url == None):
+            print('episode url #{} not found!'.format(episode))
+            continue
+        
+        pages = get_pages_for_episode_url(episode_url)
         if(len(pages) == 0):
             print('episode #{} not found!'.format(episode))
             continue
