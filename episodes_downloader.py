@@ -28,16 +28,20 @@ def get_chapters_list():
     soup = BeautifulSoup(page.content, 'html.parser')
     return soup
 
-def build_episode_pages(manga_id, episode_id, page_count):
-    episode_page_base_url = "https://onepieceteca.com/wp-content/uploads/WP-manga/data/{}/{}/{}.jpg"
+def build_episode_pages(manga_id, episode_id, episode_format, page_count):
+    episode_page_base_url = "https://onepieceteca.com/wp-content/uploads/WP-manga/data/{}/{}/{}.{}"
+    # https://onepieceteca.com/wp-content/uploads/WP-manga/data/manga_64da57d09572a/c305e79a0e02db6ba72208c08dd56adc/04.webp
     
     episode_pages_url = []
     
-    try:
+    try:        
+        range_init = 1
+        if(episode_format == "webp") :
+            range_init = 0
         max_range = int(page_count) + 1
-        for page in range(1, max_range, 1):
+        for page in range(range_init, max_range, 1):
             page_formated = "{0:0=2d}".format(page)
-            episode = episode_page_base_url.format(manga_id, episode_id, page_formated)
+            episode = episode_page_base_url.format(manga_id, episode_id, page_formated, episode_format)
             episode_pages_url.append(episode)
     except:
         pass    
@@ -55,6 +59,7 @@ def get_pages_for_episode_url(episode_url):
     
     manga_id = manga_identification[2]
     episode_id = manga_identification[1]
+    episode_format = manga_identification[0].split(".")[-1]
     page_count = 0
     
     options = manga_page.find_all('option')
@@ -65,7 +70,7 @@ def get_pages_for_episode_url(episode_url):
         if(option_selected and option_value_1 and option_data_redirect_not_null):
             page_count = option.text.split("/")[-1]
     
-    return build_episode_pages(manga_id, episode_id, page_count)
+    return build_episode_pages(manga_id, episode_id, episode_format, page_count)
 
 def get_episode_url(chapters, episode):
     found_url = None
@@ -83,7 +88,7 @@ def get_all_chapters(offline):
             json_string = file.read()
             json_data = json.loads(json_string)
             return json_data
-    
+    print("Atualizando Capitulos...")
     soup = get_chapters_list()    
     try:
         chapters = soup.find_all('li', class_='wp-manga-chapter')        
@@ -103,6 +108,7 @@ def get_all_chapters(offline):
         
     except Exception:
         chapters_list = []
+    print("Capitulos Atualizados!")      
     return chapters_list
     
 
@@ -128,8 +134,9 @@ def download_page(url, filename):
     }
     print("Downloading: " + url)
     page = requests.get(url, headers=headers)
-    open(filename, 'wb').write(page.content)
-
+    
+    if(page.status_code == 200):
+        open(filename, 'wb').write(page.content)    
 
 def compact_folder(episode):
     episode_folder_path = create_episode_path(episode)
@@ -141,19 +148,19 @@ def compact_folder(episode):
 def main(argv):
     episode_list = []
 
-    if (len(argv) == 1):
-        try:
-            eposide_number = int(argv[0])
+    try:        
+        n = len(argv)
+        for i in range(0, n):                 
+            eposide_number = int(argv[i])
             if eposide_number <= 0:
                 raise AttributeError("Sorry, no numbers below zero")
             episode_list.append(eposide_number)
-        except ValueError:
-            print(
-                'Episode number is not valid! try again. your input: {}'.format(argv[0]))
-        except AttributeError as ex:
-            print(ex)
-
-    
+    except ValueError:
+        print(
+            'Episode number is not valid! try again. your input: {}'.format(argv[0]))
+    except AttributeError as ex:
+        print(ex)
+        
     chapters = get_all_chapters(True)
     
     for episode in episode_list:
