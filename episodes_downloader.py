@@ -28,37 +28,44 @@ def get_chapters_list():
     soup = BeautifulSoup(page.content, 'html.parser')
     return soup
 
+def build_episode_pages(manga_id, episode_id, page_count):
+    episode_page_base_url = "https://onepieceteca.com/wp-content/uploads/WP-manga/data/{}/{}/{}.jpg"
+    
+    episode_pages_url = []
+    
+    try:
+        max_range = int(page_count) + 1
+        for page in range(1, max_range, 1):
+            page_formated = "{0:0=2d}".format(page)
+            episode = episode_page_base_url.format(manga_id, episode_id, page_formated)
+            episode_pages_url.append(episode)
+    except:
+        pass    
+
+    return episode_pages_url
+
 def get_pages_for_episode_url(episode_url):
     print(episode_url)
     
-    pages = []
-    return pages
-
-def get_pages_for_episode(episode):
-    # download page from url
-    url_base = "https://onepieceex.net/mangas/leitor/{}"
-    manga_url_base = "https://onepieceex.net/{}"
-
-    episode_url = url_base.format(episode)
-
-    site = get_page(episode_url).prettify()
-
-    site_html = site.splitlines()
+    manga_page = get_page(episode_url)
     
-    try:
-        manga_page_list_as_string = [
-            line for line in site_html if 'paginasLista = "{' in line][0]
-        manga_page_list_as_string = manga_page_list_as_string.replace(
-            "\tpaginasLista = \"", "").replace('\\', "").replace('";', "")
-        manga_page_list_as_json = json.loads(manga_page_list_as_string)
-    except Exception:
-        manga_page_list_as_json = {}
-    pages = []
-
-    for key in manga_page_list_as_json.keys():
-        pages.append(manga_url_base.format(manga_page_list_as_json[key]))
-
-    return pages
+    manga_features = manga_page.find_all('img', class_='wp-manga-chapter-img')
+    manga_identification = manga_features[0].get("data-src").split("/")
+    manga_identification.reverse()
+    
+    manga_id = manga_identification[2]
+    episode_id = manga_identification[1]
+    page_count = 0
+    
+    options = manga_page.find_all('option')
+    for option in options:
+        option_selected = option.get("selected") == "selected"
+        option_value_1 = option.get("value") == "1"
+        option_data_redirect_not_null = option.get("data-redirect") is not None
+        if(option_selected and option_value_1 and option_data_redirect_not_null):
+            page_count = option.text.split("/")[-1]
+    
+    return build_episode_pages(manga_id, episode_id, page_count)
 
 def get_episode_url(chapters, episode):
     found_url = None
@@ -116,9 +123,12 @@ def download_pages(episode, pages):
 
 
 def download_page(url, filename):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
+    }
     print("Downloading: " + url)
-    r = requests.get(url, allow_redirects=True)
-    open(filename, 'wb').write(r.content)
+    page = requests.get(url, headers=headers)
+    open(filename, 'wb').write(page.content)
 
 
 def compact_folder(episode):
@@ -155,7 +165,7 @@ def main(argv):
         
         pages = get_pages_for_episode_url(episode_url)
         if(len(pages) == 0):
-            print('episode #{} not found!'.format(episode))
+            print('no pages found for episode #{}!'.format(episode))
             continue
         download_pages(episode, pages)
         compact_folder(episode)
