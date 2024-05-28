@@ -81,14 +81,21 @@ def get_episode_url(chapters, episode):
             break
     return found_url
 
-def get_all_chapters(offline):
+def get_all_chapters(use_cache : bool = False):
+    current_user_folder = os.path.expanduser("~")
+    cache_directory = os.path.join(current_user_folder, ".onepiece")
+    cache_file = os.path.join(cache_directory, "all_chapters.json")
     
-    if(offline):
-        with open("all_chapters.json", "r") as file:
+    if(not os.path.exists(cache_directory)):
+        os.makedirs(cache_directory)
+    
+    if(os.path.exists(cache_file) and os.path.isfile(cache_file) and os.path.getsize(cache_file) > 0 and use_cache):
+        with open(cache_file, "r") as file:
             json_string = file.read()
             json_data = json.loads(json_string)
             return json_data
-    print("Atualizando Capitulos...")
+    
+    print("Atualizando Cache...")
     soup = get_chapters_list()    
     try:
         chapters = soup.find_all('li', class_='wp-manga-chapter')        
@@ -102,13 +109,15 @@ def get_all_chapters(offline):
             episode = re.sub(r'\D', '', text)  # \D matches any non-numeric character
             chapters_list.append({"id": episode,"text": text, "href": href})
         
-        with open("all_chapters.json", "w") as json_file:
+        with open(cache_file, "w") as json_file:
             json_string = json.dumps(chapters_list)
             json_file.write(json_string)
         
     except Exception:
+        print("Erro ao Atualizar Cache!")
         chapters_list = []
-    print("Capitulos Atualizados!")      
+        
+    print("Cache atualizado!")
     return chapters_list
     
 
@@ -161,7 +170,7 @@ def main(argv):
     except AttributeError as ex:
         print(ex)
         
-    chapters = get_all_chapters(True)
+    chapters = get_all_chapters()
     
     for episode in episode_list:
         
