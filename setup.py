@@ -28,15 +28,13 @@ setup(
     keywords=['python', 'one piece'],
     classifiers=[
         "Development Status :: 3 - Alpha",
-        "Intended Audience :: Education",
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Microsoft :: Windows",
     ],
     entry_points={
         'console_scripts' : [
-            'piece = episodes_downloader.__main__:main'
+            'piece = piece:episodes_downloader.__main__:main'
         ]
     } 
 )
