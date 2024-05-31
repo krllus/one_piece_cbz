@@ -93,7 +93,7 @@ def get_all_chapters(use_cache : bool = False):
     while(retry < 3):
         try:
             soup = get_chapters_list()
-            return chapters
+            break
         except Exception:
             print("Erro ao Atualizar Cache!")
             retry += 1
@@ -173,7 +173,7 @@ def get_cache_folder():
     
     return cache_directory
 
-def main(argv):
+def main(argv=sys.argv[1:]):
     chapter_list = []
 
     try:        
@@ -193,7 +193,7 @@ def main(argv):
     
     for chapter in chapter_list:
         
-        chapter_url = get_chapter_url(chapters=chapters, episode=chapter)
+        chapter_url = get_chapter_url(chapters=chapters, desired_chapter=chapter)
         if(chapter_url == None):
             print('episode url #{} not found!'.format(chapter))
             continue
@@ -208,4 +208,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

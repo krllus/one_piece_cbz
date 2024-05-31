@@ -34,7 +34,7 @@ setup(
     ],
     entry_points={
         'console_scripts' : [
-            'piece = piece:episodes_downloader.__main__:main'
+            'piece = piece.episodes_downloader:main'
         ]
     } 
 )
