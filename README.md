@@ -13,11 +13,26 @@ pip install build setuptools
 > build package locally
 
 ```bash
+python -m build
+```
+
+> install package locally
+
+```bash
 pip install --editable .
 ```
 
 ## Usage
 
+### Single Chapter
+
 ```bash
-onepiececbz <episode_list>
+piece <episode_number>
+```
+
+### Multiple Chapters
+
+```bash
+piece <episode_number> <episode_number> ...
+
 ```
