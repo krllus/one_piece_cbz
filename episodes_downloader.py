@@ -28,41 +28,38 @@ def get_chapters_list():
     soup = BeautifulSoup(page.content, 'html.parser')
     return soup
 
-def build_episode_pages(manga_id, episode_id, episode_format, page_count):
-    episode_page_base_url = "https://onepieceteca.com/wp-content/uploads/WP-manga/data/{}/{}/{}.{}"
-    # https://onepieceteca.com/wp-content/uploads/WP-manga/data/manga_64da57d09572a/c305e79a0e02db6ba72208c08dd56adc/04.webp
+def build_chapter_pages(manga_id, chapter_id, chapter_format, page_count):
+    chapter_page_base_url = "https://onepieceteca.com/wp-content/uploads/WP-manga/data/{}/{}/{}.{}"
     
-    episode_pages_url = []
+    chapter_pages_url = []
     
     try:        
         range_init = 1
-        if(episode_format == "webp") :
+        if(chapter_format == "webp") :
             range_init = 0
         max_range = int(page_count) + 1
         for page in range(range_init, max_range, 1):
             page_formated = "{0:0=2d}".format(page)
-            episode = episode_page_base_url.format(manga_id, episode_id, page_formated, episode_format)
-            episode_pages_url.append(episode)
+            chapter_page = chapter_page_base_url.format(manga_id, chapter_id, page_formated, chapter_format)
+            chapter_pages_url.append(chapter_page)
     except:
         pass    
 
-    return episode_pages_url
+    return chapter_pages_url
 
-def get_pages_for_episode_url(episode_url):
-    print(episode_url)
+def get_pages_for_chapter_url(chapter_url):
+    chapter_page = get_page(chapter_url)
     
-    manga_page = get_page(episode_url)
+    chapter_features = chapter_page.find_all('img', class_='wp-manga-chapter-img')
+    chapter_identification = chapter_features[0].get("data-src").split("/")
+    chapter_identification.reverse()
     
-    manga_features = manga_page.find_all('img', class_='wp-manga-chapter-img')
-    manga_identification = manga_features[0].get("data-src").split("/")
-    manga_identification.reverse()
-    
-    manga_id = manga_identification[2]
-    episode_id = manga_identification[1]
-    episode_format = manga_identification[0].split(".")[-1]
+    manga_id = chapter_identification[2]
+    chapter_id = chapter_identification[1]
+    chapter_format = chapter_identification[0].split(".")[-1]
     page_count = 0
     
-    options = manga_page.find_all('option')
+    options = chapter_page.find_all('option')
     for option in options:
         option_selected = option.get("selected") == "selected"
         option_value_1 = option.get("value") == "1"
@@ -70,24 +67,19 @@ def get_pages_for_episode_url(episode_url):
         if(option_selected and option_value_1 and option_data_redirect_not_null):
             page_count = option.text.split("/")[-1]
     
-    return build_episode_pages(manga_id, episode_id, episode_format, page_count)
+    return build_chapter_pages(manga_id, chapter_id, chapter_format, page_count)
 
-def get_episode_url(chapters, episode):
+def get_chapter_url(chapters, desired_chapter):
     found_url = None
     for chapter in chapters:
-        
-        if chapter["id"].casefold() == str(episode).casefold():
+        if chapter["id"].casefold() == str(desired_chapter).casefold():
             found_url = chapter["href"]
             break
     return found_url
 
 def get_all_chapters(use_cache : bool = False):
-    current_user_folder = os.path.expanduser("~")
-    cache_directory = os.path.join(current_user_folder, ".onepiece")
+    cache_directory = get_cache_folder()
     cache_file = os.path.join(cache_directory, "all_chapters.json")
-    
-    if(not os.path.exists(cache_directory)):
-        os.makedirs(cache_directory)
     
     if(os.path.exists(cache_file) and os.path.isfile(cache_file) and os.path.getsize(cache_file) > 0 and use_cache):
         with open(cache_file, "r") as file:
@@ -96,7 +88,16 @@ def get_all_chapters(use_cache : bool = False):
             return json_data
     
     print("Atualizando Cache...")
-    soup = get_chapters_list()    
+    
+    retry = 0
+    while(retry < 3):
+        try:
+            soup = get_chapters_list()
+            return chapters
+        except Exception:
+            print("Erro ao Atualizar Cache!")
+            retry += 1
+    
     try:
         chapters = soup.find_all('li', class_='wp-manga-chapter')        
         
@@ -122,8 +123,8 @@ def get_all_chapters(use_cache : bool = False):
     
 
 def create_episode_path(episode):
-    current_dir = os.getcwd()
-    episode_folder_path = os.path.join(current_dir, "downloads")
+    cache_dir = get_cache_folder()
+    episode_folder_path = os.path.join(cache_dir, "downloads")
     episode_folder_path = os.path.join(episode_folder_path, str(episode))
     os.makedirs(episode_folder_path, exist_ok=True)
     return episode_folder_path
@@ -144,8 +145,18 @@ def download_page(url, filename):
     print("Downloading: " + url)
     page = requests.get(url, headers=headers)
     
+    retry = 0
+    while(page.status_code != 200 and retry < 3):
+        print("Error downloading: " + url)
+        print("Retrying...")
+        page = requests.get(url, headers=headers)
+        retry += 1
+    
     if(page.status_code == 200):
-        open(filename, 'wb').write(page.content)    
+        open(filename, 'wb').write(page.content)
+    else:
+        print("Error downloading: " + url)
+        print("Download failed!")
 
 def compact_folder(episode):
     episode_folder_path = create_episode_path(episode)
@@ -153,17 +164,25 @@ def compact_folder(episode):
     episode_file_path = os.path.join(episode_folder_path, episode_file)
     subprocess.call(["zip", "-r", episode_file_path, episode_folder_path])
 
+def get_cache_folder():
+    current_user_folder = os.path.expanduser("~")
+    cache_directory = os.path.join(current_user_folder, ".onepiece")
+    
+    if(not os.path.exists(cache_directory)):
+        os.makedirs(cache_directory)
+    
+    return cache_directory
 
 def main(argv):
-    episode_list = []
+    chapter_list = []
 
     try:        
         n = len(argv)
         for i in range(0, n):                 
-            eposide_number = int(argv[i])
-            if eposide_number <= 0:
+            chapter_number = int(argv[i])
+            if chapter_number <= 0:
                 raise AttributeError("Sorry, no numbers below zero")
-            episode_list.append(eposide_number)
+            chapter_list.append(chapter_number)
     except ValueError:
         print(
             'Episode number is not valid! try again. your input: {}'.format(argv[0]))
@@ -172,20 +191,20 @@ def main(argv):
         
     chapters = get_all_chapters()
     
-    for episode in episode_list:
+    for chapter in chapter_list:
         
-        episode_url = get_episode_url(chapters=chapters, episode=episode)
-        if(episode_url == None):
-            print('episode url #{} not found!'.format(episode))
+        chapter_url = get_chapter_url(chapters=chapters, episode=chapter)
+        if(chapter_url == None):
+            print('episode url #{} not found!'.format(chapter))
             continue
         
-        pages = get_pages_for_episode_url(episode_url)
+        pages = get_pages_for_chapter_url(chapter_url)
         if(len(pages) == 0):
-            print('no pages found for episode #{}!'.format(episode))
+            print('no pages found for episode #{}!'.format(chapter))
             continue
-        download_pages(episode, pages)
-        compact_folder(episode)
-        print("download episode completed: " + str(episode))
+        download_pages(chapter, pages)
+        compact_folder(chapter)
+        print("download episode completed: " + str(chapter))
 
 
 if __name__ == "__main__":
