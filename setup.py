@@ -7,7 +7,7 @@ LONG_DESCRIPTION = 'One Piece - Downloader'
 # Setting up
 setup(
     # the name must match the folder name 'piece'
-    name="piece",
+    name="onepiececbz",
     version=VERSION,
     author="Joao Carlos",
     author_email="<joaocarlos@duck.com>",

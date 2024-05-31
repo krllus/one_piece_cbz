@@ -2,17 +2,22 @@
 
 One Piece Manga (PT_BR) Downloader and Converter to CBZ
 
-- create a python environment
+## Development Configuration
+
+> install dependencies: build, setuptools
 
 ```bash
-virtualenv environment
+pip install build setuptools
 ```
 
-- activate the environment
+> build package locally
 
 ```bash
-source "$(pwd)/environment/bin/activate"
+pip install --editable .
 ```
 
-- edit episodes list to be downloaded
-- execute the script
+## Usage
+
+```bash
+onepiececbz <episode_list>
+```
